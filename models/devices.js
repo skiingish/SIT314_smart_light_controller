@@ -35,7 +35,7 @@ module.exports = mongoose.model('Devices', new mongoose.Schema({
         type: String,
         trim: true
     },
-    mqtt_path: {
+    mqtt_topic: {
         type: String,
         trim: true,
         required: [true, "path can't be blank"]
