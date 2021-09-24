@@ -29,6 +29,8 @@ app.post('/newdevice/', async(req, res) => {
 
     // Log the incoming req body (the customer sign up form submission).
     console.log(req.body);
+
+    req.body.mqtt_path = `/scorlights/${req.body.apartment_id}/${req.body.room_id}/${req.body.device_id}/`;
     
     // Create new customer object with the Mongo DB customers model from the post body.
     const newDevice = new Devices((req.body));
@@ -62,7 +64,7 @@ app.post('/newdevice/', async(req, res) => {
         //for (const [key, value] of Object.entries(err.errors)) {
         //    console.log(`${key}: ${value}`);
         //}
-        res.send(err);
+        res.send(err.message);
         // Close the db connection.
         mongoose.connection.close();
     });
