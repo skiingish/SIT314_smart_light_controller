@@ -14,6 +14,7 @@ const app = express();
 
 // Middleware.
 app.use(bodyParser.urlencoded({extended:true}));
+app.use(bodyParser.json());
 //app.use(express.static(__dirname + '/public'));
 
 // MongoDB - add the username, password, to connection string.
@@ -24,6 +25,32 @@ app.get('/', (req, res) => {
     //res.render('register.ejs', { err: [], passwordMatchError: false, entryValues: null });
     res.send("Hello this is the smart light controller");
 });
+
+// GET Info routes
+app.get('/device/:id', async(req, res) => {
+    // Connect to the MongoDB.
+    mongoose.connect(connectString, { useNewUrlParser: true, useUnifiedTopology: true })
+        .then(() => console.log('Connected to db'))
+        .catch(err => {
+            // Show db connection error on the console. 
+            console.log('Could not connect to the db. ', err);
+            // Show the error page.
+            let errorMessage = "Error connecting to database server - Please try again later.";
+            res.render('errorpage.ejs', {errorDetails: errorMessage});
+        });
+    
+    result = await lookupDevice(req.params.id);
+    if (result.length > 0 )
+    {
+        res.send(result);
+    }
+    else
+    {
+        res.send("Failed to lookup device");
+    }
+})
+
+// ADD ITEMS
 
 // Add New Device Route 
 app.post('/newdevice/', async(req, res) => {
@@ -45,7 +72,7 @@ app.post('/newdevice/', async(req, res) => {
             console.log('Could not connect to the db. ', err);
             // Show the error page.
             let errorMessage = "Error connecting to database server - Please try again later.";
-            res.render('errorpage.ejs', {errorDetails: errorMessage});
+            res.send(errorMessage);
         });
     
     // Try to save the new customer form submission to the DB.
@@ -56,7 +83,7 @@ app.post('/newdevice/', async(req, res) => {
         // Show the success page.
         //res.render('custlogin.ejs', {entryValues: newCustomer});
         //res.redirect('/custlogin');
-        res.send('Saved New Device: ', req.body);
+        res.send(req.body);
         
         // Close the db connection.
         mongoose.connection.close();
@@ -71,6 +98,8 @@ app.post('/newdevice/', async(req, res) => {
         mongoose.connection.close();
     });
 });
+
+// POST LIGHT CONTROLS
 
 // Toggle Light Route
 app.post('/lights/:id/toggle/', async(req, res) => {
@@ -95,7 +124,7 @@ app.post('/lights/:id/toggle/', async(req, res) => {
     mongoose.connection.close();
 
     // Pub to the devices MQTT path.
-    mqttPublish(deviceTopic, req.body.message);
+    mqttPublish(deviceTopic, "toggle");
 
     res.send(`Toggle light ${req.params.id}`);
 });
@@ -163,13 +192,12 @@ app.post('/lightsV2/room/:id/toggle/', async (req, res) => {
     // If it is a correct topic, room exists in the apartment ID.
     if (devices.length > 0)
     {
-        console.log(devices);
+        // Send message to all devices found in room in the apartment.
+        for (let i = 0; i < devices.length; i++) {
+            mqttPublish(devices[i].mqtt_topic, "toggle");
+        }
 
-        // TODO create a for loop to send a MMQT message to each device in the returned.
-        
-        // Pub to the room MQTT path.
-        //mqttPublish(topic, req.body.message);
-        res.send(`Toggled Room: ${req.params.id} in Apartment: ${req.body.apartment_id} with message ${req.body.message}`);
+        res.send(`Toggled Room: ${req.params.id} in Apartment: ${req.body.apartment_id}`);
     }
     else
     {
@@ -215,6 +243,45 @@ app.post('/lights/apartment/:id/toggle/', async(req, res) => {
     }
 });
 
+// Toggle a apartment version 2.
+app.post('/lightsV2/apartment/:id/toggle/', async (req, res) => {
+    // Log the incoming req body.
+    console.log(req.body);
+
+    // Connect to the MongoDB.
+    mongoose.connect(connectString, { useNewUrlParser: true, useUnifiedTopology: true })
+        .then(() => console.log('Connected to db'))
+        .catch(err => {
+            // Show db connection error on the console. 
+            console.log('Could not connect to the db. ', err);
+        });
+
+    // Get the MQTT topics for the lights in the inputted apartment.
+    var devices = await allLightsInApartment(req.params.id)
+        .catch(() => {
+            console.log(`Failed to check MQTT topics for apartment: ${req.params.id}`);
+        });
+
+    // Close the db connection.
+    mongoose.connection.close();
+    
+    // If it is a correct topic, room exists in the apartment ID.
+    if (devices.length > 0)
+    {
+        // Send message to all lights in the apartment.
+        for (let i = 0; i < devices.length; i++) {
+            mqttPublish(devices[i].mqtt_topic, "toggle");
+        }
+
+        res.send(`Toggled lights in apartment: ${req.params.id}`);
+    }
+    else
+    {
+        res.send(`Failed find lights In: ${req.params.id}`);
+    }
+
+});
+
 // Toggle all lights. (Master Contorl)
 app.post('/lights/toggle/all', async(req, res) => {
     console.log(req.body);
@@ -222,6 +289,101 @@ app.post('/lights/toggle/all', async(req, res) => {
     mqttPublish(topic, req.body.message);
     res.send(`Toggled all with: ${req.body.message}`);
 });
+
+// Toggle all lights. (Master Contorl)
+app.post('/lightsV2/toggle/all', async(req, res) => {
+    console.log(req.body);
+    var topic = `/scorlights/`;
+    mqttPublish(topic, "toggle");
+    res.send(`Toggled all lights`);
+});
+
+// UPDATE RECORDS
+
+// Update a device
+app.patch('/updatedevice/:id', async(req, res) => {
+    // Connect to the MongoDB.
+    mongoose.connect(connectString, { useNewUrlParser: true, useUnifiedTopology: true })
+        .then(() => console.log('Connected to db'))
+        .catch(err => {
+            // Show db connection error on the console. 
+            console.log('Could not connect to the db. ', err);
+        });
+
+    // Update the required device with the specified fields.
+    const result = await Devices.updateOne(
+        {device_id: req.params.id},
+        {$set: req.body},
+        (err) => {
+            if (err) {res.send(err)}
+        }
+    );
+    
+    // Look up the device that was just updated, return the newly updated device as the result.
+    Devices.findOne({device_id: req.params.id}, (err, foundDevice) => {
+        if (foundDevice) (res.send(foundDevice))
+        else res.send('Could not find updated device')
+    });
+
+    //mongoose.connection.close();
+});
+
+// DELETE RECORDS
+
+// Delete a device
+app.delete('/deletedevice/:id/', async(req, res) => {
+    // Connect to the MongoDB.
+    mongoose.connect(connectString, { useNewUrlParser: true, useUnifiedTopology: true })
+        .then(() => console.log('Connected to db'))
+        .catch(err => {
+            // Show db connection error on the console. 
+            console.log('Could not connect to the db. ', err);
+        });
+    
+    // Delete the required device.     
+    Devices.deleteOne({device_id: req.params.id}, (err) => {
+        console.log(`trying to delete: ${req.params.id}`);
+        if (err) {res.send(err);}
+        else 
+        {
+            console.log(`Deleted: ${req.params.id}`);
+            res.send(`Deleted ${req.params.id}`);
+        }
+
+    });
+
+    //mongoose.connection.close();
+});
+
+// Delete all!
+app.delete('/deletedevices/', async(req, res) => {
+    // Connect to the MongoDB.
+    mongoose.connect(connectString, { useNewUrlParser: true, useUnifiedTopology: true })
+        .then(() => console.log('Connected to db'))
+        .catch(err => {
+            // Show db connection error on the console. 
+            console.log('Could not connect to the db. ', err);
+        });
+    
+        // Delete all! (Mass wipe)
+    Devices.deleteMany((err) => {
+        if (err) {res.send(err)}
+        else res.send('Deleted all devices');
+    });
+
+    //mongoose.connection.close();
+});
+
+async function lookupDevice(device_id) {
+    const device = await Devices
+    .find({device_id: device_id})
+    .catch((err) => {
+        console.log(err);
+        return success;
+    });
+
+    return device;
+}
 
 // find the full path for a passed device id.
 async function getDeviceMQTT(device_id) {
@@ -282,7 +444,30 @@ async function allLightsInRoom(apartment_id, room_id) {
     }
     else
     {
-       console.log("Room Contains No Lights");
+       console.log(`Room ${room_id} in apartment: ${apartment_id} contains no lights `);
+       return [];
+    }
+}
+
+async function allLightsInApartment(apartment_id) {
+    // Look up at the apartment and see if the room id exist in that apartment.
+    const result = await Devices
+    .find({apartment_id: apartment_id, device_type: "light"})
+    .catch((err) => {
+        console.log(err);
+        return success;
+    });
+
+    // If lights are found in the apartment return true.
+    // Else query invaild.
+    if (result.length > 0)
+    {
+        //console.log(`result: ${result[0]}`);
+        return result;
+    }
+    else
+    {
+       console.log("Apartment contains no lights");
        return [];
     }
 }
@@ -311,6 +496,7 @@ async function checkApartmentMQTT(apartment_id) {
        return false;
     }
 }
+
 // Set the port.
 const PORT = process.env.PORT || config.get('port');
 
