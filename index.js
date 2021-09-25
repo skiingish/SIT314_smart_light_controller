@@ -1,6 +1,6 @@
 // Created by Sean Corcoran
 // Light Controller Backend
-// For SIT314 - Final Project - Deakin University - 7/2021
+// For SIT314 - Final Project - Deakin University - 2021
 
 const express = require("express");
 const bodyParser = require("body-parser");
@@ -129,6 +129,34 @@ app.post('/lights/:id/toggle/', async(req, res) => {
     res.send(`Toggle light ${req.params.id}`);
 });
 
+// Change Light Route
+app.post('/lights/:id/changestate/', async(req, res) => {
+    // Log the incoming req body.
+    console.log(req.body);
+
+    // Connect to the MongoDB.
+    mongoose.connect(connectString, { useNewUrlParser: true, useUnifiedTopology: true })
+        .then(() => console.log('Connected to db'))
+        .catch(err => {
+            // Show db connection error on the console. 
+            console.log('Could not connect to the db. ', err);
+        });
+
+    // Look up the device ID, find it's mqtt path
+    var deviceTopic = await getDeviceMQTT(req.params.id)
+        .catch(() => {
+            console.log('Failed to lookup MQTT topic for device');
+        });
+    
+    // Close the db connection.
+    mongoose.connection.close();
+
+    // Pub to the devices MQTT path.
+    mqttPublish(deviceTopic, req.body.stateChange);
+
+    res.send(`Toggle light ${req.params.id}`);
+});
+
 // Toggle a room
 app.post('/lights/room/:id/toggle/', async (req, res) => {
     // Log the incoming req body.
@@ -195,6 +223,45 @@ app.post('/lightsV2/room/:id/toggle/', async (req, res) => {
         // Send message to all devices found in room in the apartment.
         for (let i = 0; i < devices.length; i++) {
             mqttPublish(devices[i].mqtt_topic, "toggle");
+        }
+
+        res.send(`Toggled Room: ${req.params.id} in Apartment: ${req.body.apartment_id}`);
+    }
+    else
+    {
+        res.send(`Toggled Room: ${req.params.id} does not exist in apartment: ${req.body.apartment_id}`);
+    }
+
+});
+
+// Change a state on a room version 2.
+app.post('/lightsV2/room/:id/toggle/', async (req, res) => {
+    // Log the incoming req body.
+    console.log(req.body);
+
+    // Connect to the MongoDB.
+    mongoose.connect(connectString, { useNewUrlParser: true, useUnifiedTopology: true })
+        .then(() => console.log('Connected to db'))
+        .catch(err => {
+            // Show db connection error on the console. 
+            console.log('Could not connect to the db. ', err);
+        });
+
+    // Check the room does exist in the apartment ID thats passed in.
+    var devices = await allLightsInRoom(req.body.apartment_id, req.params.id)
+        .catch(() => {
+            console.log(`Failed to check MQTT topic for room: ${req.params.id}`);
+        });
+
+    // Close the db connection.
+    mongoose.connection.close();
+    
+    // If it is a correct topic, room exists in the apartment ID.
+    if (devices.length > 0)
+    {
+        // Send message to all devices found in room in the apartment.
+        for (let i = 0; i < devices.length; i++) {
+            mqttPublish(devices[i].mqtt_topic, req.body.stateChange);
         }
 
         res.send(`Toggled Room: ${req.params.id} in Apartment: ${req.body.apartment_id}`);
@@ -282,6 +349,45 @@ app.post('/lightsV2/apartment/:id/toggle/', async (req, res) => {
 
 });
 
+// Change state on a apartment version 2.
+app.post('/lightsV2/apartment/:id/changestate/', async (req, res) => {
+    // Log the incoming req body.
+    console.log(req.body);
+
+    // Connect to the MongoDB.
+    mongoose.connect(connectString, { useNewUrlParser: true, useUnifiedTopology: true })
+        .then(() => console.log('Connected to db'))
+        .catch(err => {
+            // Show db connection error on the console. 
+            console.log('Could not connect to the db. ', err);
+        });
+
+    // Get the MQTT topics for the lights in the inputted apartment.
+    var devices = await allLightsInApartment(req.params.id)
+        .catch(() => {
+            console.log(`Failed to check MQTT topics for apartment: ${req.params.id}`);
+        });
+
+    // Close the db connection.
+    mongoose.connection.close();
+    
+    // If it is a correct topic, room exists in the apartment ID.
+    if (devices.length > 0)
+    {
+        // Send message to all lights in the apartment.
+        for (let i = 0; i < devices.length; i++) {
+            mqttPublish(devices[i].mqtt_topic, req.body.stateChange);
+        }
+
+        res.send(`Toggled lights in apartment: ${req.params.id}`);
+    }
+    else
+    {
+        res.send(`Failed find lights In: ${req.params.id}`);
+    }
+
+});
+
 // Toggle all lights. (Master Contorl)
 app.post('/lights/toggle/all', async(req, res) => {
     console.log(req.body);
@@ -290,11 +396,19 @@ app.post('/lights/toggle/all', async(req, res) => {
     res.send(`Toggled all with: ${req.body.message}`);
 });
 
-// Toggle all lights. (Master Contorl)
+// Toggle all lights. (Master Contorl) Version 2
 app.post('/lightsV2/toggle/all', async(req, res) => {
     console.log(req.body);
     var topic = `/scorlights/`;
     mqttPublish(topic, "toggle");
+    res.send(`Toggled all lights`);
+});
+
+// Change state all lights. (Master Contorl) Version 2
+app.post('/lightsV2/changestate/all', async(req, res) => {
+    console.log(req.body);
+    var topic = `/scorlights/`;
+    mqttPublish(topic, req.body.stateChange);
     res.send(`Toggled all lights`);
 });
 
