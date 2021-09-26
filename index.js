@@ -4,6 +4,7 @@
 
 const express = require("express");
 const bodyParser = require("body-parser");
+const customUtil = require('./middleware/custom-utils');
 const config = require('config');
 const mongoose = require('mongoose');
 const Devices = require('./models/devices');
@@ -13,6 +14,7 @@ const mqttPublish = require('./mqttPublish');
 const app = express();
 
 // Middleware.
+app.use(customUtil);
 app.use(bodyParser.urlencoded({extended:true}));
 app.use(bodyParser.json());
 //app.use(express.static(__dirname + '/public'));
@@ -48,6 +50,138 @@ app.get('/device/:id', async(req, res) => {
     {
         res.send("Failed to lookup device");
     }
+})
+
+// Get the list of all apartments.
+app.get('/list/apartments/', async(req, res) => {
+    // Connect to the MongoDB.
+    mongoose.connect(connectString, { useNewUrlParser: true, useUnifiedTopology: true })
+        .then(() => console.log('Connected to db'))
+        .catch(err => {
+            // Show db connection error on the console. 
+            console.log('Could not connect to the db. ', err);
+            // Show the error page.
+            let errorMessage = "Error connecting to database server - Please try again later.";
+            res.render('errorpage.ejs', {errorDetails: errorMessage});
+        });
+        const apartments = await Devices
+        .find().distinct('apartment_id')
+        .catch((err) => {
+            console.log(err);
+            res.send(err);
+        });
+    
+        res.send(apartments);
+})
+
+// Get the list of all rooms in an apartment.
+app.get('/list/rooms/apartment/:id', async(req, res) => {
+    // Connect to the MongoDB.
+    mongoose.connect(connectString, { useNewUrlParser: true, useUnifiedTopology: true })
+        .then(() => console.log('Connected to db'))
+        .catch(err => {
+            // Show db connection error on the console. 
+            console.log('Could not connect to the db. ', err);
+            // Show the error page.
+            let errorMessage = "Error connecting to database server - Please try again later.";
+            res.render('errorpage.ejs', {errorDetails: errorMessage});
+        });
+        const apartments = await Devices
+        .find({apartment_id: req.params.id}).distinct('room_id')
+        .catch((err) => {
+            console.log(err);
+            res.send(err);
+        });
+    
+        res.send(apartments);
+})
+
+// Get the list of all devices in a apartment.
+app.get('/list/devices/apartment/:id', async(req, res) => {
+    // Connect to the MongoDB.
+    mongoose.connect(connectString, { useNewUrlParser: true, useUnifiedTopology: true })
+        .then(() => console.log('Connected to db'))
+        .catch(err => {
+            // Show db connection error on the console. 
+            console.log('Could not connect to the db. ', err);
+            // Show the error page.
+            let errorMessage = "Error connecting to database server - Please try again later.";
+            res.render('errorpage.ejs', {errorDetails: errorMessage});
+        });
+        const apartments = await Devices
+        .find({apartment_id: req.params.id}).distinct('device_id')
+        .catch((err) => {
+            console.log(err);
+            res.send(err);
+        });
+    
+        res.send(apartments);
+})
+
+// Get the list of all devices in a room.
+app.get('/list/devices/room/:id', async(req, res) => {
+    // Connect to the MongoDB.
+    mongoose.connect(connectString, { useNewUrlParser: true, useUnifiedTopology: true })
+        .then(() => console.log('Connected to db'))
+        .catch(err => {
+            // Show db connection error on the console. 
+            console.log('Could not connect to the db. ', err);
+            // Show the error page.
+            let errorMessage = "Error connecting to database server - Please try again later.";
+            res.render('errorpage.ejs', {errorDetails: errorMessage});
+        });
+        const apartments = await Devices
+        .find({room_id: req.params.id}).distinct('device_id')
+        .catch((err) => {
+            console.log(err);
+            res.send(err);
+        });
+    
+        res.send(apartments);
+})
+
+// Get the list of all devices in a room.
+app.get('/list/lights/room/:id', async(req, res) => {
+    // Connect to the MongoDB.
+    mongoose.connect(connectString, { useNewUrlParser: true, useUnifiedTopology: true })
+        .then(() => console.log('Connected to db'))
+        .catch(err => {
+            // Show db connection error on the console. 
+            console.log('Could not connect to the db. ', err);
+            // Show the error page.
+            let errorMessage = "Error connecting to database server - Please try again later.";
+            res.render('errorpage.ejs', {errorDetails: errorMessage});
+        });
+        const apartments = await Devices
+        .find({room_id: req.params.id, device_type: "light"}).distinct('device_id')
+        .catch((err) => {
+            console.log(err);
+            res.send(err);
+        });
+    
+        res.send(apartments);
+})
+
+// Get the list of all devices.
+app.get('/list/devices/', async(req, res) => {
+    // Connect to the MongoDB.
+    mongoose.connect(connectString, { useNewUrlParser: true, useUnifiedTopology: true })
+        .then(() => console.log('Connected to db'))
+        .catch(err => {
+            // Show db connection error on the console. 
+            console.log('Could not connect to the db. ', err);
+            // Show the error page.
+            let errorMessage = "Error connecting to database server - Please try again later.";
+            res.render('errorpage.ejs', {errorDetails: errorMessage});
+        });
+        const apartments = await Devices
+        .find().distinct('device_id')
+        .catch((err) => {
+            console.log(err);
+            res.send(err);
+        });
+    
+        res.send(apartments);
 })
 
 // ADD ITEMS
