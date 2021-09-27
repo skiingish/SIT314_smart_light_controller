@@ -8,7 +8,7 @@ function mqttPublish(topic, message) {
     // Connect > once connected publish the message under the set topic.
     client.on('connect', () => {
         // Display message the service is connected. 
-        console.log(`MQTT connected, publishing message: '${message}' on topic: '${topic}'`);
+        //console.log(`MQTT connected, publishing message: '${message}' on topic: '${topic}'`);
 
         // Publish data to the MQTT service on the required topic and with the message. 
         client.publish(topic, message);
