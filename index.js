@@ -445,8 +445,12 @@ app.patch('/updatedevice/:id', async(req, res) => {
     
     // Look up the device that was just updated, return the newly updated device as the result.
     Devices.findOne({device_id: req.params.id}, (err, foundDevice) => {
-        if (foundDevice) (res.send(foundDevice))
-        else res.send('Could not find updated device')
+        if (foundDevice) {
+            (res.send(foundDevice))
+        } 
+        else {
+            res.send('Could not find updated device')
+        }
     });
 });
 
