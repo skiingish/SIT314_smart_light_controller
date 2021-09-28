@@ -1,7 +1,7 @@
 {
     "name": "smart_light_controller",
     "db": {
-        "user": "",
-        "password": ""
+        "user": "smartlightControllerBackendProd",
+        "password": "Ptt9jcTpKT6dJncp"
     }
 }
