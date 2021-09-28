@@ -24,7 +24,7 @@ app.use(bodyParser.urlencoded({extended:true}));
 app.use(bodyParser.json());
 
 // MongoDB connection string - add the username, password, to connection string.
-const connectString = `mongodb+srv://${config.get('db.user')}:${config.get('db.password')}@sit314.ljihj.mongodb.net/sit314?retryWrites=true&w=majority`;
+const connectString = `mongodb+srv://smartlightControllerBackendProd:Ptt9jcTpKT6dJncp@sit314.ljihj.mongodb.net/sit314?retryWrites=true&w=majority`;
 
 // Connect to the devices MongoDB.
 mongoose.connect(connectString, { useNewUrlParser: true, useUnifiedTopology: true })
@@ -607,7 +607,12 @@ async function checkApartmentExists(apartment_id) {
 }
 
 // Set the port.
-const PORT = process.env.PORT || config.get('port');
+let PORT = process.env.PORT; 
+
+if (process.env.PORT == null)
+{
+    PORT = 8000;
+}
 
 // Console output port open.
 app.listen(PORT, console.log(`Listening on port ${PORT}`));
