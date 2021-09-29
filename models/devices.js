@@ -5,7 +5,7 @@ module.exports = mongoose.model('Devices', new mongoose.Schema({
         type: String,
         trim: true,
         required: [true, "device_ID can't be blank"],
-        unique: [true, "can't have the same device entered more then once"] 
+        unique: [true, "Can't have the same device entered more then once"] 
     },
     device_name: {
         type: String,
@@ -29,7 +29,7 @@ module.exports = mongoose.model('Devices', new mongoose.Schema({
     apartment_id: {
         type: String,
         trim: true,
-        required: [true, "apartment id can't be blank"]
+        required: [true, "Apartment id can't be blank"]
     },
     apartment_name: {
         type: String,
@@ -41,7 +41,7 @@ module.exports = mongoose.model('Devices', new mongoose.Schema({
         required: [true, "path can't be blank"]
     },
     current_state: {
-        type: String,
+        type: Number,
         trim: true
     },
     target: {

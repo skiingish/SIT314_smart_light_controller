@@ -446,13 +446,45 @@ app.patch('/updatedevice/:id', async(req, res) => {
     // Look up the device that was just updated, return the newly updated device as the result.
     Devices.findOne({device_id: req.params.id}, (err, foundDevice) => {
         if (foundDevice) {
-            (res.send(foundDevice))
+                // Set the new topic 
+                let mqtt_topic = `/scorlights/${foundDevice.apartment_id}/${foundDevice.room_id}/${foundDevice.device_id}/`
+                // Update the topic on the DB.
+                let updateMQTT = updateMqttTopic(req.params.id, mqtt_topic);
+                // Send back the call
+                if (updateMQTT) {
+                    foundDevice.mqtt_topic = mqtt_topic;
+                    res.send(foundDevice);
+                }
+                else{
+                    res.send('Could not update devices MQTT topic, please try again.');
+                }
+                
         } 
         else {
             res.send('Could not find updated device')
         }
     });
 });
+
+// Change a light's current state as stored in the database. (Must be a 0 or a 1)
+app.patch('/updatedevice/updatestate/:id', async(req, res) => {
+    let newState = parseInt(req.body.current_state);
+    
+    // Make sure the input is vaild.
+    if (newState < 0 || newState > 1)
+    {
+        res.send("Updated state must be inputted as a 1 or a 0");
+    }
+
+    // Update the required device's state (on or off).
+    const result = await Devices.updateOne(
+        {device_id: req.params.id},
+        {current_state: newState},
+        (err) => {
+            if (err) {res.send(err)}
+        }
+    ).then(res.send(`Changed state of ${req.params.id} to ${req.body.current_state}`))
+})
 
 // -- DELETE REQUESTS --
 
@@ -604,6 +636,20 @@ async function checkApartmentExists(apartment_id) {
        console.log("Apartment ID does not exist");
        return false;
     }
+}
+
+// Update the MQTT topic
+async function updateMqttTopic (device_id, mqtt_topic) {
+    
+    // Update the required device's MQTT topic.
+    const result = await Devices.updateOne(
+        {device_id: device_id},
+        {mqtt_topic: mqtt_topic},
+        (err) => {
+            if (err) {res.send(err)}
+        }
+    ).then( () => {return true})
+    .catch( () => {return false});
 }
 
 // Set the port.
