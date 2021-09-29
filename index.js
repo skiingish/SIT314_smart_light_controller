@@ -38,7 +38,7 @@ mongoose.connect(connectString, { useNewUrlParser: true, useUnifiedTopology: tru
 
 // Default GET route.
 app.get('/', (req, res) => {
-    res.send("Hello this is the smart light controller, I am online :)");
+    res.send("Hello this is the smart light controller, I am online :) this is the prod version");
 });
 
 // Get info for a single device.
