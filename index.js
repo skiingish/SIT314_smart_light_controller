@@ -179,13 +179,10 @@ app.get('/list/switches/', async(req, res) => {
 
 // Add New Device Route 
 app.post('/newdevice/', async(req, res) => {
-    // Log the incoming req body (the customer sign up form submission).
-    //console.log(req.body);
-
     // Create the require MQTT Topic
     req.body.mqtt_topic = `/scorlights/${req.body.apartment_id}/${req.body.room_id}/${req.body.device_id}/`
 
-    // Create new customer object with the Mongo DB customers model from the post body.
+    // Create new device object with the Mongo DB device model from the post body.
     const newDevice = new Devices((req.body));
 
     // Try to save the new device submission to the DB.
